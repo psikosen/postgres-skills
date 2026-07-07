@@ -1,0 +1,67 @@
+name: pipeline-watch
+# Haiku triages CI failures. When the ci workflow finishes red, a Haiku-pinned
+# Claude pulls the failed job logs, names the failing test and the likely
+# cause, and files (or updates) a triage issue. Haiku because reading a log
+# and quoting the failing line is cheap work.
+#
+# Needs a repo secret: ANTHROPIC_API_KEY. Without it the job skips politely.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  triage:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: check for API key
+        id: key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No ANTHROPIC_API_KEY secret configured — skipping triage."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
+
+      - name: pull failed logs
+        if: steps.key.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run view ${{ github.event.workflow_run.id }} \
+            --repo "$GITHUB_REPOSITORY" --log-failed > /tmp/failed.log || true
+          tail -c 20000 /tmp/failed.log > /tmp/failed-tail.log
+
+      - name: triage with Haiku
+        if: steps.key.outputs.present == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--model claude-haiku-4-5-20251001 --allowedTools Bash(gh issue:*),Bash(gh api:*),Read"
+          prompt: |
+            CI failed on commit ${{ github.event.workflow_run.head_sha }}
+            (branch ${{ github.event.workflow_run.head_branch }}).
+            Run: ${{ github.event.workflow_run.html_url }}
+
+            The failed-step log tail is in /tmp/failed-tail.log. Read it and:
+            1. Identify the failing job/step and quote the exact failing line(s).
+            2. State the most likely cause in one or two sentences.
+            3. Use `gh issue list --label ci-failure --state open` to find an
+               existing triage issue. If one exists, add a comment with your
+               findings; otherwise create one titled
+               "CI failure on <branch>: <failing step>" with label ci-failure.
+            Keep the whole write-up under 20 lines. Do not modify any code.
+        env:
+          GH_TOKEN: ${{ github.token }}

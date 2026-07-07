@@ -1,0 +1,62 @@
+name: key-scan
+# Two layers of credential scanning on every PR and push:
+#   1. gitleaks over the full git history — generic API keys, tokens, passwords.
+#   2. Toolkit-specific checks — a real pg.env must never land in the repo, and
+#      nothing outside pg.env.example may carry connection credentials.
+on:
+  pull_request:
+  push:
+    branches: [geo, main]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: run gitleaks over full history
+        run: |
+          curl -sL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --no-banner -v
+
+  toolkit-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no real pg.env, no inline credentials
+        run: |
+          set -euo pipefail
+          fail=0
+
+          if git ls-files | grep -qE '(^|/)pg\.env$'; then
+            echo "FAIL: a real pg.env is committed — that file holds credentials and stays local."
+            fail=1
+          fi
+
+          # PGPASSWORD (or Password= in a connection string) with a literal value,
+          # anywhere except the example file and docs that reference the variable name.
+          # Requires an alphanumeric start so placeholders ("...", "$conn",
+          # "$(...)", "<PW>") never trip it.
+          hits="$(git grep -nE 'PGPASSWORD=[A-Za-z0-9]|Password=[A-Za-z0-9]' -- \
+            ':!pg.env.example' ':!README.md' || true)"
+          if [ -n "$hits" ]; then
+            echo "FAIL: literal database credentials found:"
+            echo "$hits"
+            fail=1
+          fi
+
+          # Anthropic / cloud key shapes anywhere in the tree.
+          hits="$(git grep -nE 'sk-ant-[A-Za-z0-9_-]{10,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{15,}' || true)"
+          if [ -n "$hits" ]; then
+            echo "FAIL: provider API key material found:"
+            echo "$hits"
+            fail=1
+          fi
+
+          [ $fail -eq 0 ] && echo "key-scan: clean"
+          exit $fail
