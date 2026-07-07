@@ -1,6 +1,6 @@
 ---
 name: pg-explain
-version: 1.4.0
+version: 1.5.0
 description: Get and interpret EXPLAIN (ANALYZE, BUFFERS) plans safely (DML analyzed inside a rolled-back transaction). Required evidence before any index add, query rewrite, or "fixed the slow query" claim.
 when_to_use: Use for any query-performance question — "why is this slow", "does this use the index", "should we add an index" — and before/after every performance change. Also when a /pg-query hits the statement timeout.
 argument-hint: "[env] [sql]"

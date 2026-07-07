@@ -1,12 +1,15 @@
 ---
 name: pg-toolkit
-version: 1.4.0
+version: 1.5.0
 description: Maintain the Postgres toolkit itself — check installed-vs-repo drift, upgrade, and make skill/agent changes through the sanctioned flow (repo edit → bump.sh → commit/MR → reinstall). The ONLY correct way to modify pg-* skills.
 when_to_use: Use when the user wants to update, improve, version-bump, or check the pg-* skills/agents ("update the toolkit", "am I on the latest pg skills", "change pg-explain to also..."), or when any session is about to edit a file under ~/.claude/skills/pg-* (stop — route here instead).
 argument-hint: "[check | upgrade | change <skill> <what>]"
 ---
 
 # pg-toolkit — maintain the toolkit through the flow, not around it
+
+Live state at load time (repo resolved from PG_TOOLKIT_REPO):
+!`bash -c 'source ~/.claude/pg.env 2>/dev/null; R="${PG_TOOLKIT_REPO:-}"; if [ -x "$R/install.sh" ] && [ -f "$R/VERSION" ]; then "$R/install.sh" --check 2>/dev/null; elif [ -x "$R/Postgres/install.sh" ]; then "$R/Postgres/install.sh" --check 2>/dev/null; else echo "PG_TOOLKIT_REPO not configured in ~/.claude/pg.env"; fi; true'`
 
 The repo is the source of truth; `~/.claude/skills/pg-*` are stamped MANAGED copies.
 Resolve the repo first: `$PG_TOOLKIT_REPO` from `~/.claude/pg.env` (source it; the path may be the toolkit itself or a parent containing `Postgres/`), else ask

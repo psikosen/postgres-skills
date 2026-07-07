@@ -1,6 +1,6 @@
 ---
 name: pg-reviewer
-version: 1.4.0
+version: 1.5.0
 description: Read-only reviewer for SQL — migrations, query changes, and ORM/EF query code. Classifies findings as BLOCKER (must fix before merge) or ADVISORY. Use before opening any MR that touches *.sql migrations or nontrivial data-access code, and when the pg-migration skill hands off a diff. Never edits code.
 tools: Read, Grep, Glob, Bash
 ---

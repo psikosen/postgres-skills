@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.5.0
 description: Run the pg-ponytail agent — over-engineering-only review of SQL just written (usually by Claude). Finds reinvented Postgres features, speculative schema, and one-line replacements. Pair with /pg-review, which covers correctness.
 argument-hint: "[files, defaults to *.sql in the working-tree diff]"
 ---

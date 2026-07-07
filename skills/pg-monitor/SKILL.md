@@ -1,11 +1,12 @@
 ---
 name: pg-monitor
-version: 1.4.0
+version: 1.5.0
 description: Cheap scheduled Postgres monitor — one small read-only probe, one-line verdict. Runs on Haiku at low effort because the job is reading six numbers against thresholds, not thinking. Built to fire from a schedule (/loop, a scheduled task, or OS cron via claude -p); also fine to run by hand for a quick pulse check.
 when_to_use: Use for recurring lightweight monitoring ("watch the DB", "check dev every 30 minutes") and quick is-anything-on-fire pulses. For an actual investigation use /pg-health (full report) or /pg-triage (live incident).
 argument-hint: "[env]"
 model: haiku
 effort: low
+context: fork
 disallowed-tools: AskUserQuestion
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/monitor.sh *)
 ---
