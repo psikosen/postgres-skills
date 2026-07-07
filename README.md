@@ -74,16 +74,16 @@ someone does anyway: OUTDATED means the repo moved on and you should reinstall,
 DRIFTED means your local copy has edits that the next install will erase — port them
 into the repo or let them go.
 
-Want the check to run itself? Drop this in `~/.claude/settings.json` and every new
-session opens with a one-line warning when something is stale, and stays quiet
-otherwise:
+The installer also wires up three hooks in `~/.claude/settings.json` (it merges them
+in without touching your existing entries, and `--uninstall` takes them back out):
 
-```json
-{ "hooks": { "SessionStart": [ { "matcher": "startup", "hooks": [
-  { "type": "command", "timeout": 15,
-    "command": "bash -c 'source ~/.claude/pg.env 2>/dev/null; [ -d \"$PG_TOOLKIT_REPO/Postgres\" ] && \"$PG_TOOLKIT_REPO/Postgres/install.sh\" --check 2>/dev/null | grep -E \"OUTDATED|DRIFTED\" || true'" }
-] } ] } }
-```
+- Pre-tool guard: any Bash command that calls raw `psql` outside the toolkit wrappers
+  gets held for your approval instead of running silently. Export
+  `PG_ALLOW_RAW_PSQL=1` to turn the guard off.
+- Post-edit lint: the moment a migration file gets written or edited, the linter runs.
+  BLOCKERs bounce straight back to Claude to fix; warnings show up as context.
+- Session start: runs the drift check and prints a one-liner when your copies are
+  OUTDATED or DRIFTED. Quiet when everything is current.
 
 ## Changing the toolkit
 

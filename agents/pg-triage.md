@@ -1,6 +1,6 @@
 ---
 name: pg-triage
-version: 1.1.0
+version: 1.2.0
 description: Read-only live-incident triage for Postgres — lock pileups, connection exhaustion, runaway queries, replication/vacuum stalls. Produces a findings report with the session PIDs and the exact remediation commands for a HUMAN to run. Use when the database is misbehaving right now. Never executes writes or kills sessions itself.
 tools: Read, Grep, Glob, Bash
 ---

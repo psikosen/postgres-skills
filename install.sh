@@ -26,6 +26,7 @@ END_MARKER="# --- end Postgres toolkit block ---"
 SKILLS=(pg-query pg-explain pg-migration pg-health pg-toolkit)
 AGENTS=(pg-reviewer.md pg-perf.md pg-triage.md pg-detective.md)
 COMMANDS=(pg-review.md pg-perf.md pg-triage.md)
+HOOKS=(pg-guard-raw-psql.sh pg-lint-migrations.sh pg-session-drift.sh)
 
 # ---------------------------------------------------------------------------
 # Managed-copy machinery: installed files are stamped so (a) humans and Claude
@@ -100,6 +101,9 @@ if [[ "${1:-}" == "--check" ]]; then
   for c in "${COMMANDS[@]}"; do
     check_unit "cmd:${c%.md}" "$SCRIPT_DIR/commands/$c" "$CLAUDE_DIR/commands/$c" || rc=1
   done
+  for h in "${HOOKS[@]}"; do
+    check_unit "hook:${h%.sh}" "$SCRIPT_DIR/hooks/$h" "$CLAUDE_DIR/hooks/$h" || rc=1
+  done
   exit $rc
 fi
 
@@ -122,6 +126,28 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   for c in "${COMMANDS[@]}"; do
     rm -f "$CLAUDE_DIR/commands/$c" && echo "  removed commands/$c"
   done
+  for h in "${HOOKS[@]}"; do
+    rm -f "$CLAUDE_DIR/hooks/$h" && echo "  removed hooks/$h"
+  done
+  if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
+    cp "$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/settings.json.pre-pg-uninstall.$TS"
+    python3 - "$CLAUDE_DIR/settings.json" <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+cfg = json.load(open(path))
+hooks = cfg.get("hooks", {})
+for event in list(hooks):
+    kept = []
+    for entry in hooks[event]:
+        entry["hooks"] = [h for h in entry.get("hooks", []) if "/hooks/pg-" not in h.get("command", "")]
+        if entry["hooks"]:
+            kept.append(entry)
+    if kept: hooks[event] = kept
+    else: del hooks[event]
+json.dump(cfg, open(path, "w"), indent=2)
+PYEOF
+    echo "  removed pg-* hook entries from settings.json (backup: settings.json.pre-pg-uninstall.$TS)"
+  fi
   if [[ -f "$TARGET" ]] && grep -qF "$BEGIN_PREFIX" "$TARGET"; then
     cp "$TARGET" "$TARGET.pre-pg-uninstall.$TS"
     remove_block
@@ -156,7 +182,7 @@ if [[ -f "$TARGET" ]]; then
   fi
 fi
 
-mkdir -p "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/commands"
+mkdir -p "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/commands" "$CLAUDE_DIR/hooks"
 
 echo "Installing skills (directory + scripts)..."
 for s in "${SKILLS[@]}"; do
@@ -181,6 +207,43 @@ for c in "${COMMANDS[@]}"; do
   cp "$SCRIPT_DIR/commands/$c" "$CLAUDE_DIR/commands/$c"
   stamp_md "$CLAUDE_DIR/commands/$c" "$VERSION"
 done
+
+echo "Installing hooks (scripts + settings.json wiring)..."
+for h in "${HOOKS[@]}"; do
+  if [[ -f "$CLAUDE_DIR/hooks/$h" ]]; then echo "  [UPDATE] hooks/$h"; else echo "  [NEW]    hooks/$h"; fi
+  cp "$SCRIPT_DIR/hooks/$h" "$CLAUDE_DIR/hooks/$h"
+  stamp_sh "$CLAUDE_DIR/hooks/$h" "$VERSION"
+  chmod +x "$CLAUDE_DIR/hooks/$h"
+done
+if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
+  cp "$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/settings.json.pre-pg.$TS"
+fi
+python3 - "$CLAUDE_DIR" <<'PYEOF'
+import json, os, sys
+claude_dir = sys.argv[1]
+path = os.path.join(claude_dir, "settings.json")
+cfg = json.load(open(path)) if os.path.exists(path) else {}
+hooks = cfg.setdefault("hooks", {})
+
+def ensure(event, matcher, script, timeout):
+    cmd = os.path.join(claude_dir, "hooks", script)
+    entries = hooks.setdefault(event, [])
+    for entry in entries:
+        for h in entry.get("hooks", []):
+            if h.get("command") == cmd:
+                h["timeout"] = timeout           # keep current
+                entry["matcher"] = matcher
+                return
+    entries.append({"matcher": matcher,
+                    "hooks": [{"type": "command", "command": cmd, "timeout": timeout}]})
+
+ensure("PreToolUse",  "Bash",                 "pg-guard-raw-psql.sh",  10)
+ensure("PostToolUse", "Edit|Write|MultiEdit", "pg-lint-migrations.sh", 20)
+ensure("SessionStart","startup|resume",       "pg-session-drift.sh",   15)
+
+json.dump(cfg, open(path, "w"), indent=2)
+print("  settings.json: PreToolUse/PostToolUse/SessionStart entries ensured (idempotent)")
+PYEOF
 
 echo "Shipping pg.env.example..."
 cp "$SCRIPT_DIR/pg.env.example" "$CLAUDE_DIR/pg.env.example"

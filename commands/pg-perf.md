@@ -1,5 +1,5 @@
 ---
-version: 1.1.0
+version: 1.2.0
 description: Run the pg-perf agent — full performance investigation of a slow query, endpoint, or general slowness report, with EXPLAIN evidence and a ranked fix list.
 argument-hint: "[env] [query, endpoint, or symptom]"
 ---
