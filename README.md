@@ -1,97 +1,82 @@
-# Postgres toolkit
+# Postgres toolkit for Claude Code
 
-Guarded SQL/Postgres workflows for Claude Code: read-only querying, EXPLAIN-driven
-performance work, migration authoring with lint guardrails, instance health triage,
-and a read-only SQL reviewer agent.
+A set of skills, agents, and commands that make Claude handle Postgres work the way a
+careful DBA would. Reads go through a guarded wrapper, schema changes go through
+migrations, and performance claims come with EXPLAIN plans attached.
 
-## What's inside
+## What you get
 
-| Piece | Invoke | What it does |
-|---|---|---|
-| `skills/pg-query` | `/pg-query <env> "<sql>"` | Ad-hoc **read-only** queries via `scripts/psql-ro.sh` (read-only session, statement timeout) |
-| `skills/pg-explain` | `/pg-explain <env> "<sql>"` | `EXPLAIN (ANALYZE, BUFFERS)` inside BEGIN…ROLLBACK via `scripts/explain.sh`, plus plan-reading discipline |
-| `skills/pg-migration` | `/pg-migration ...` | Migration authoring checklist + `scripts/lint-migration.sh` (BLOCKER/warning static lint) |
-| `skills/pg-health` | `/pg-health <env>` | Full health snapshot via `scripts/health.sh`, summarized into ranked findings (runs forked) |
-| `agents/pg-reviewer` | via Agent tool | Read-only BLOCKER/ADVISORY review of migrations and data-access code |
-| `CLAUDE.md.fragment` | always resident | ~20 lines: the safety rules + routing, nothing else |
+Skills (these show up as slash commands, and Claude also picks them up on its own):
 
-## Install / upgrade / uninstall
+- `/pg-query <env> "<sql>"` — ad-hoc read-only queries. The wrapper forces a read-only
+  session and a statement timeout, so nobody fat-fingers an UPDATE into beta.
+- `/pg-explain <env> "<sql>"` — EXPLAIN (ANALYZE, BUFFERS) inside a transaction that
+  rolls back, so you can safely analyze writes too. Comes with instructions that teach
+  Claude to actually read the plan instead of guessing.
+- `/pg-migration <what you want>` — writes migration scripts the safe way and lints
+  them for the stuff that causes real incidents: DELETE without WHERE, CONCURRENTLY
+  inside a transaction, index builds that blow the deploy timeout.
+- `/pg-health <env>` — one-shot health report: sizes, seq-scan hot spots, unused
+  indexes, connection counts, vacuum lag, top queries.
+- `/pg-toolkit` — maintains the toolkit itself. Checks whether your copies are stale,
+  upgrades them, and walks skill changes through the release flow.
+
+Agents (Claude launches these for bigger jobs; all read-only):
+
+- `pg-reviewer` — reviews migrations and data-access code before an MR. Findings come
+  back as BLOCKER or ADVISORY with file and line.
+- `pg-perf` — takes "this endpoint is slow" and comes back with the actual query, the
+  plan, and a ranked fix list.
+- `pg-triage` — for when the database is on fire right now. Finds the lock chain or
+  the runaway query and hands you the kill commands to run yourself. It never runs
+  them for you.
+- `pg-detective` — figures out how bad data got that way. Walks foreign keys, audit
+  tables, and the code that writes the table, then tells you the story with a blast
+  radius count.
+
+Commands (shortcuts that point the agents at something):
+
+- `/pg-review` — pg-reviewer on your current diff.
+- `/pg-perf <env> <symptom>` — kick off a performance investigation.
+- `/pg-triage <env> <what's happening>` — kick off incident triage.
+
+## Setup
 
 ```bash
-cd Postgres
-./install.sh              # install, or upgrade in place
-./install.sh --uninstall  # remove skills, agent, and the CLAUDE.md block
-```
-
-Then configure your environments once:
-
-```bash
+./install.sh
 cp ~/.claude/pg.env.example ~/.claude/pg.env
 chmod 600 ~/.claude/pg.env
-# edit: one pg_env_<name>() function per environment (static creds or fetched
-# on demand — a Key Vault example is included). Never commit this file.
 ```
 
-## Design notes (why it's shaped this way)
+Then open `~/.claude/pg.env` and define your environments, one shell function per
+environment. Static credentials work for a local DB; for shared environments the
+example shows how to pull the connection string from Azure Key Vault on demand, so
+nothing sensitive sits in the file. Set `PG_TOOLKIT_REPO` in there too so `/pg-toolkit`
+knows where this repo lives.
 
-- **The fragment is deliberately tiny.** CLAUDE.md content is a per-session token tax,
-  so it carries only what must be *always on*: the never-raw-psql / migrations-only /
-  no-perf-claims-without-EXPLAIN rules and two routing hints. Every procedure lives in
-  a skill, which loads only when used.
-- **Skills are directories, not flat files.** Each bundles its `scripts/*.sh` and
-  references them via `${CLAUDE_SKILL_DIR}`, so they work regardless of the working
-  directory. `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh *)` pre-approves
-  exactly the bundled script and nothing else (needs Claude Code ≥ 2.1.196 for the
-  substitution in allowed-tools).
-- **Scripts are the guardrail, prose is the policy.** The wrappers enforce read-only +
-  timeouts mechanically (`PGOPTIONS`), so safety doesn't depend on the model
-  remembering an instruction. The fragment's rules exist so Claude *routes* to the
-  wrappers.
-- **Versioned, replaceable block.** The fragment's begin marker carries a version and
-  `install.sh` replaces the block in place on re-run — installed copies can't silently
-  drift from the repo (the classic failure of append-only fragment installers).
-- **No `commands/` folder.** Custom commands were merged into skills; a skill directory
-  gives the same `/name` invocation plus bundled files and frontmatter control.
+Start a new Claude Code session and the skills are live. You need `psql` on your PATH,
+and a logged-in `az` CLI if your environments fetch from Key Vault.
 
-## Versioning
+## How updates work
 
-The toolkit is versioned in three visible places — `VERSION`, every `SKILL.md`/agent
-frontmatter `version:`, and the `CLAUDE.md.fragment` begin-marker — kept in sync by one
-command:
+The repo is the source of truth. `install.sh` copies files into `~/.claude/`, and those
+copies just sit there until you refresh them:
 
 ```bash
-./bump.sh 1.1.0   # updates all three; hand-editing any one of them is how drift starts
+git pull && ./install.sh     # get current
+./install.sh --check         # am I current? (OK / OUTDATED / DRIFTED per item)
+./install.sh --uninstall     # remove everything it installed
 ```
 
-`install.sh` refuses to run a half-bumped release (fragment marker ≠ `VERSION`), and on
-upgrade prints the installed vs incoming version before replacing the block in place.
-So "what version does this teammate have?" is answered by the marker line in their
-`~/.claude/CLAUDE.md` and the `version:` in any installed `SKILL.md`.
+Installed files carry a MANAGED stamp telling you (and any Claude session) to make
+changes in the repo rather than in `~/.claude/` directly. `--check` catches it if
+someone does anyway: OUTDATED means the repo moved on and you should reinstall,
+DRIFTED means your local copy has edits that the next install will erase — port them
+into the repo or let them go.
 
-Release flow: change files → `./bump.sh X.Y.Z` → commit/MR → teammates `git pull` and
-re-run `./install.sh`.
-
-**Managed copies + drift detection.** Installed files are stamped with a
-`MANAGED by Postgres/install.sh vX.Y.Z` header (after the frontmatter / shebang, so
-nothing breaks) telling humans and Claude sessions alike that edits belong in the repo.
-`./install.sh --check` then diffs every installed file against the repo and reports,
-per skill/agent:
-
-- `OK` — matches the repo at the current version.
-- `OUTDATED` — the repo released a newer version; re-run `./install.sh`.
-- `DRIFTED` — the installed copy was edited in place; those edits are LOST on the next
-  install. Either port them into the repo (MR + `bump.sh`) or let the reinstall erase
-  them. Nonzero exit code, so it's automatable (shell profile, session-start hook, CI).
-
-> **When to graduate to a plugin:** Claude Code plugins carry a `plugin.json` version
-> and update through marketplaces — no installer script, no fragment. If this toolkit
-> stabilizes and the team wants push-button updates, converting it (skills/ and agents/
-> move over nearly as-is) is the natural next step; the CLAUDE.md fragment content
-> would become the plugin's memory file.
-
-**Automatic drift nagging (optional).** Skills only run when invoked — for a check that
-happens *without asking*, add a SessionStart hook to `~/.claude/settings.json` (set
-`PG_TOOLKIT_REPO` in `~/.claude/pg.env` first):
+Want the check to run itself? Drop this in `~/.claude/settings.json` and every new
+session opens with a one-line warning when something is stale, and stays quiet
+otherwise:
 
 ```json
 { "hooks": { "SessionStart": [ { "matcher": "startup", "hooks": [
@@ -100,12 +85,32 @@ happens *without asking*, add a SessionStart hook to `~/.claude/settings.json` (
 ] } ] } }
 ```
 
-Every new session then starts with a one-line warning if your copies are stale or
-edited — and stays silent when everything is OK.
+## Changing the toolkit
 
-## Credentials
+Edit in the repo, bump, ship:
 
-The scripts never store credentials. `~/.claude/pg.env` defines `pg_env_<name>()`
-functions that export the standard `PG*` variables — statically for local DBs, or
-fetched on demand (Key Vault, Vault, SSM...) for shared ones. `PG_TIMEOUT_MS`
-overrides per-script timeouts when a legitimately heavy read needs it.
+```bash
+# edit skills/pg-explain/SKILL.md (or whatever)
+./bump.sh 1.2.0      # updates VERSION, every frontmatter, and the fragment marker
+git commit -am "pg-explain: <what and why>"
+# open a PR; after merge everyone runs: git pull && ./install.sh
+```
+
+`bump.sh` is the only sanctioned way to change version numbers — it keeps the three
+places they appear in sync, and `install.sh` refuses to install a half-bumped release.
+Git holds the whole history: `git log skills/pg-explain/` is the changelog, `git blame`
+answers who and when, and a bad release is a revert plus a reinstall.
+
+## Why the CLAUDE.md fragment is so small
+
+Anything in your global CLAUDE.md costs tokens in every single session. So the fragment
+carries only the rules that must always be on — no raw psql against shared DBs, schema
+changes through migrations only, no perf claims without a plan — and everything
+procedural lives in the skills, which load only when used.
+
+## A note on safety
+
+The wrappers enforce read-only and timeouts at the session level (`PGOPTIONS`), so
+protection comes from the mechanism rather than from Claude remembering an
+instruction. It's a guardrail, not a jail: the point is to make the safe path the
+easy path.

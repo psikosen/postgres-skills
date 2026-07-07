@@ -1,6 +1,6 @@
 ---
 name: pg-migration
-version: 1.0.0
+version: 1.1.0
 description: Author and lint versioned SQL migrations (DbUp-style ScriptNNNN files) with the guardrails that have actually bitten this team — lock hazards, CONCURRENTLY-in-transaction, timeout blowups on index builds, constraint/enum drift.
 when_to_use: Use for ANY schema change — new table/column/index, constraint change, data backfill, or repair script. Also when reviewing a diff that adds or edits a *.sql migration.
 argument-hint: "[what the migration should do]"

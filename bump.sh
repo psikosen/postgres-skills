@@ -13,14 +13,14 @@ NEW="${1:-}"
 OLD="$(cat VERSION)"
 echo "$NEW" > VERSION
 
-for f in skills/*/SKILL.md agents/*.md; do
+for f in skills/*/SKILL.md agents/*.md commands/*.md; do
   sed -i '' "s/^version: .*/version: $NEW/" "$f"
 done
 
 sed -i '' "s/^# --- Postgres toolkit (optional add-on) v[0-9.]* ---$/# --- Postgres toolkit (optional add-on) v$NEW ---/" CLAUDE.md.fragment
 
 echo "Bumped $OLD -> $NEW:"
-grep -rH "^version:" skills/*/SKILL.md agents/*.md
+grep -rH "^version:" skills/*/SKILL.md agents/*.md commands/*.md
 head -1 CLAUDE.md.fragment
 echo ""
 echo "Next: commit, then teammates re-run ./install.sh (the block upgrades in place)."

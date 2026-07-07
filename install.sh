@@ -24,7 +24,8 @@ BEGIN_PREFIX="# --- Postgres toolkit (optional add-on)"
 END_MARKER="# --- end Postgres toolkit block ---"
 
 SKILLS=(pg-query pg-explain pg-migration pg-health pg-toolkit)
-AGENTS=(pg-reviewer.md)
+AGENTS=(pg-reviewer.md pg-perf.md pg-triage.md pg-detective.md)
+COMMANDS=(pg-review.md pg-perf.md pg-triage.md)
 
 # ---------------------------------------------------------------------------
 # Managed-copy machinery: installed files are stamped so (a) humans and Claude
@@ -94,7 +95,10 @@ if [[ "${1:-}" == "--check" ]]; then
     check_unit "$s" "$SCRIPT_DIR/skills/$s" "$CLAUDE_DIR/skills/$s" || rc=1
   done
   for a in "${AGENTS[@]}"; do
-    check_unit "${a%.md}" "$SCRIPT_DIR/agents/$a" "$CLAUDE_DIR/agents/$a" || rc=1
+    check_unit "agent:${a%.md}" "$SCRIPT_DIR/agents/$a" "$CLAUDE_DIR/agents/$a" || rc=1
+  done
+  for c in "${COMMANDS[@]}"; do
+    check_unit "cmd:${c%.md}" "$SCRIPT_DIR/commands/$c" "$CLAUDE_DIR/commands/$c" || rc=1
   done
   exit $rc
 fi
@@ -114,6 +118,9 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   done
   for a in "${AGENTS[@]}"; do
     rm -f "$CLAUDE_DIR/agents/$a" && echo "  removed agents/$a"
+  done
+  for c in "${COMMANDS[@]}"; do
+    rm -f "$CLAUDE_DIR/commands/$c" && echo "  removed commands/$c"
   done
   if [[ -f "$TARGET" ]] && grep -qF "$BEGIN_PREFIX" "$TARGET"; then
     cp "$TARGET" "$TARGET.pre-pg-uninstall.$TS"
@@ -149,7 +156,7 @@ if [[ -f "$TARGET" ]]; then
   fi
 fi
 
-mkdir -p "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents"
+mkdir -p "$CLAUDE_DIR/skills" "$CLAUDE_DIR/agents" "$CLAUDE_DIR/commands"
 
 echo "Installing skills (directory + scripts)..."
 for s in "${SKILLS[@]}"; do
@@ -166,6 +173,13 @@ for a in "${AGENTS[@]}"; do
   if [[ -f "$CLAUDE_DIR/agents/$a" ]]; then echo "  [UPDATE] agents/$a"; else echo "  [NEW]    agents/$a"; fi
   cp "$SCRIPT_DIR/agents/$a" "$CLAUDE_DIR/agents/$a"
   stamp_md "$CLAUDE_DIR/agents/$a" "$VERSION"
+done
+
+echo "Installing commands..."
+for c in "${COMMANDS[@]}"; do
+  if [[ -f "$CLAUDE_DIR/commands/$c" ]]; then echo "  [UPDATE] commands/$c"; else echo "  [NEW]    commands/$c"; fi
+  cp "$SCRIPT_DIR/commands/$c" "$CLAUDE_DIR/commands/$c"
+  stamp_md "$CLAUDE_DIR/commands/$c" "$VERSION"
 done
 
 echo "Shipping pg.env.example..."
