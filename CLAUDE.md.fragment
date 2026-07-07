@@ -1,0 +1,29 @@
+# --- Postgres toolkit (optional add-on) v1.0.0 ---
+# Installed by Postgres/install.sh. Everything procedural lives in the lazy-loading
+# skills below — this block carries ONLY the always-on safety rules and routing.
+# Upgrades: re-run install.sh (it replaces this block in place by the markers).
+
+## Postgres rules (always on)
+
+**Safety — non-negotiable on any shared/remote database (dev, alpha, beta, UAT, prod):**
+1. **Never run ad-hoc SQL through raw `psql`/clients.** Reads go through `/pg-query`
+   (read-only session, statement timeout, row cap). If a task needs a write outside a
+   migration, STOP and confirm with the user first — then still wrap it in an explicit
+   transaction with a row-count check before COMMIT.
+2. **Schema changes only via `/pg-migration`.** Never hand-write DDL against a live DB;
+   never edit an already-merged migration script.
+3. **No performance claims without a plan.** Before adding an index, rewriting a query
+   "for speed", or calling something fixed, get `EXPLAIN (ANALYZE, BUFFERS)` evidence
+   via `/pg-explain` — before AND after.
+
+**Toolkit maintenance:** the installed `~/.claude/skills/pg-*` and `agents/pg-reviewer.md`
+files are MANAGED copies — never edit them in place (changes are overwritten on install).
+To change a skill: edit it in the setup-guide repo (`Postgres/`), run `./bump.sh`, commit
+via MR, then re-run `./install.sh`. Use `./install.sh --check` to detect drift.
+
+**Routing (suggest, don't auto-run):**
+- User reports DB slowness, timeouts, or connection exhaustion → suggest `/pg-health`.
+- A diff touches `*.sql` migration files → run the migration linter and suggest the
+  `pg-reviewer` agent before the MR.
+
+# --- end Postgres toolkit block ---
