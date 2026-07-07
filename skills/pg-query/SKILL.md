@@ -1,6 +1,6 @@
 ---
 name: pg-query
-version: 1.2.0
+version: 1.3.0
 description: Run ad-hoc READ-ONLY SQL against a Postgres environment through a guarded wrapper (read-only session, statement timeout, row cap). The ONLY sanctioned way to query shared databases from a session.
 when_to_use: Use whenever you or the user need to look at live data — "check the DB", "query prod/beta/dev", "how many rows...", "what's in table X". Also use instead of raw psql in any verification step.
 argument-hint: "[env] [sql or a question to translate into sql]"

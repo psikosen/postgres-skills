@@ -33,12 +33,17 @@ Agents (Claude launches these for bigger jobs; all read-only):
 - `pg-detective` — figures out how bad data got that way. Walks foreign keys, audit
   tables, and the code that writes the table, then tells you the story with a blast
   radius count.
+- `pg-ponytail` — the lazy-senior-DBA pass. Reads SQL Claude just wrote and flags
+  over-engineering only: reinvented Postgres features, speculative columns and
+  indexes, trigger machinery where a constraint would do. Tells you what to delete.
 
 Commands (shortcuts that point the agents at something):
 
 - `/pg-review` — pg-reviewer on your current diff.
 - `/pg-perf <env> <symptom>` — kick off a performance investigation.
 - `/pg-triage <env> <what's happening>` — kick off incident triage.
+- `/pg-ponytail` — over-engineering review of the SQL in your current diff. Run it
+  next to `/pg-review`: one hunts complexity, the other hunts bugs.
 
 ## Setup
 

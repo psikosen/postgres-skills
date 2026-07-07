@@ -1,6 +1,6 @@
 ---
 name: pg-health
-version: 1.2.0
+version: 1.3.0
 description: One-shot Postgres health report for an environment — table/index sizes, sequential-scan hot spots, unused and duplicate indexes, cache hit ratio, connection saturation, autovacuum lag, and top statements when pg_stat_statements is available.
 when_to_use: Use when the user reports database slowness, timeouts, connection errors, or asks "how is the DB doing" — and as the first move when triaging any perf incident before guessing at causes.
 argument-hint: "[env]"

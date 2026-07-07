@@ -1,4 +1,4 @@
-# --- Postgres toolkit (optional add-on) v1.2.0 ---
+# --- Postgres toolkit (optional add-on) v1.3.0 ---
 # Installed by Postgres/install.sh. Everything procedural lives in the lazy-loading
 # skills below — this block carries ONLY the always-on safety rules and routing.
 # Upgrades: re-run install.sh (it replaces this block in place by the markers).

@@ -1,6 +1,6 @@
 ---
 name: pg-toolkit
-version: 1.2.0
+version: 1.3.0
 description: Maintain the Postgres toolkit itself — check installed-vs-repo drift, upgrade, and make skill/agent changes through the sanctioned flow (repo edit → bump.sh → commit/MR → reinstall). The ONLY correct way to modify pg-* skills.
 when_to_use: Use when the user wants to update, improve, version-bump, or check the pg-* skills/agents ("update the toolkit", "am I on the latest pg skills", "change pg-explain to also..."), or when any session is about to edit a file under ~/.claude/skills/pg-* (stop — route here instead).
 argument-hint: "[check | upgrade | change <skill> <what>]"
