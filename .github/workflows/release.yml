@@ -31,6 +31,5 @@ jobs:
           PREV="$(git tag --sort=-v:refname | sed -n 2p)"
           RANGE=""; [ -n "$PREV" ] && RANGE="$PREV..HEAD"
           NOTES="$(git log $RANGE --pretty='- %s' -- . | head -40)"
-          gh release create "$VER" --title "$VER" --notes "$NOTES
-
-Update: git pull && ./install.sh"
+          BODY="$(printf '%s\n\nUpdate: git pull && ./install.sh' "$NOTES")"
+          gh release create "$VER" --title "$VER" --notes "$BODY"

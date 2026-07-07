@@ -59,7 +59,7 @@ installed_version_of() { # read the stamped version out of an installed file
 
 check_unit() { # $1 = label, $2 = repo path (file or dir), $3 = installed path
   local label="$1" repo="$2" inst="$3"
-  local status="OK" iver="" drift_files=()
+  local iver="" drift_files=()
 
   if [[ ! -e "$inst" ]]; then
     printf '  %-14s NOT INSTALLED\n' "$label"
