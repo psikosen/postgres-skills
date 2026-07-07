@@ -1,6 +1,6 @@
 ---
 name: pg-ponytail
-version: 1.3.0
+version: 1.4.0
 description: Lazy-senior-DBA review of SQL that Claude (or anyone) just wrote — hunts over-engineering only. Finds reinvented Postgres features, speculative indexes and columns, trigger/proc machinery where a constraint would do, and multi-statement dances that Postgres does in one line. Complements pg-reviewer (correctness); this one only asks "does this need to exist". Read-only.
 tools: Read, Grep, Glob, Bash
 ---

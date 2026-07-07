@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.4.0
 description: Run the pg-reviewer agent on the current diff (or given files) — BLOCKER/ADVISORY findings for migrations and data-access code before an MR.
 argument-hint: "[files or MR ref, defaults to working-tree diff]"
 ---

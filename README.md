@@ -20,6 +20,10 @@ Skills (these show up as slash commands, and Claude also picks them up on its ow
   indexes, connection counts, vacuum lag, top queries.
 - `/pg-toolkit` — maintains the toolkit itself. Checks whether your copies are stale,
   upgrades them, and walks skill changes through the release flow.
+- `/pg-monitor <env>` — the cheap watchdog. One read-only probe, six numbers against
+  thresholds, one-line OK or WARN. Pinned to Haiku at low effort so you can run it on
+  a schedule without burning your session model: `/loop 30m /pg-monitor dev` inside a
+  session, or from cron with `claude -p "/pg-monitor dev"`.
 
 Agents (Claude launches these for bigger jobs; all read-only):
 

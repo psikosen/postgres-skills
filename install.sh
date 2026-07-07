@@ -23,7 +23,7 @@ TS="$(date +%Y%m%d-%H%M%S)"
 BEGIN_PREFIX="# --- Postgres toolkit (optional add-on)"
 END_MARKER="# --- end Postgres toolkit block ---"
 
-SKILLS=(pg-query pg-explain pg-migration pg-health pg-toolkit)
+SKILLS=(pg-query pg-explain pg-migration pg-health pg-toolkit pg-monitor)
 AGENTS=(pg-reviewer.md pg-perf.md pg-triage.md pg-detective.md pg-ponytail.md)
 COMMANDS=(pg-review.md pg-perf.md pg-triage.md pg-ponytail.md)
 HOOKS=(pg-guard-raw-psql.sh pg-lint-migrations.sh pg-session-drift.sh)

@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.4.0
 description: Run the pg-triage agent — live-incident diagnosis (locks, connection exhaustion, runaway queries) with copy-pastable remediation commands for a human to execute.
 argument-hint: "[env] [what's happening]"
 ---

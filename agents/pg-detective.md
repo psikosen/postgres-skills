@@ -1,6 +1,6 @@
 ---
 name: pg-detective
-version: 1.3.0
+version: 1.4.0
 description: Read-only data investigator. Answers "why does this row look wrong" — traces suspect data back through related tables, audit/history tables, timestamps, and the code paths that write it, then reports the story of how the data got that way. Use for wrong-count bugs, mystery values, orphaned rows, and "the report says X but the screen says Y". Never modifies data.
 tools: Read, Grep, Glob, Bash
 ---
