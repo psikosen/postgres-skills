@@ -1,0 +1,36 @@
+name: release
+# When VERSION changes on the default branch, tag it and cut a GitHub Release.
+# Teammates then update with: git pull && ./install.sh — the release page is the
+# human-readable "what changed" for each version.
+on:
+  push:
+    branches: [geo, main]
+    paths: [VERSION]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: tag and release if the version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="v$(cat VERSION)"
+          if git rev-parse "$VER" >/dev/null 2>&1; then
+            echo "$VER already tagged — nothing to do."
+            exit 0
+          fi
+          git tag "$VER"
+          git push origin "$VER"
+          PREV="$(git tag --sort=-v:refname | sed -n 2p)"
+          RANGE=""; [ -n "$PREV" ] && RANGE="$PREV..HEAD"
+          NOTES="$(git log $RANGE --pretty='- %s' -- . | head -40)"
+          gh release create "$VER" --title "$VER" --notes "$NOTES
+
+Update: git pull && ./install.sh"
